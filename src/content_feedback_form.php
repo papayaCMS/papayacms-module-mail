@@ -389,7 +389,7 @@ class content_feedback_form extends base_content {
         $dom = new PapayaXmlDocument();
         $dom->loadXml($structure['feedback_form_structure']);
         foreach ($dom->xpath()->evaluate('//field/@name') as $option) {
-          $option = trim($option);
+          $option = trim($option->value);
           if ($option != '') {
             if ($data == $option) {
               $selected = ' selected="selected"';
