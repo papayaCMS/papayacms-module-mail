@@ -5,7 +5,8 @@ Licence: GPL V2 - GNU General Public Licence, version 2
 
 -----------------------------------------------------------------------
 
-This is a module for [papaya CMS](http://www.papaya-cms.com/).
+This is a module for [papaya CMS](https://github.com/papayaCMS/) 
+[(see project website to find out more about papaya CMS)](http://www.papaya-cms.com/)
 
 ### Installation
 
