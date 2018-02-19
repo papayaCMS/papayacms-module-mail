@@ -783,85 +783,23 @@ class admin_feedback_store extends base_feedback_store {
   */
   function loadCsvFeedback($feedbackTitle, $feedbackForm = 0) {
     if ($feedbackForm != 0) {
-      $csvData = array();
-      $csvCaptions = array();
-      $xmlString = $this->loadXmlFeedback($feedbackTitle, $feedbackForm);
-      $xmlTree = PapayaXmlDocument::createFromXML($xmlString, TRUE);
-      if (is_object($xmlTree) &&
-          isset($xmlTree->documentElement) &&
-          $xmlTree->documentElement->hasChildNodes()) {
-        for ($idx1 = 0; $idx1 < $xmlTree->documentElement->childNodes->length; $idx1++) {
-          $node = $xmlTree->documentElement->childNodes->item($idx1);
-          if ($node->nodeType instanceof DOMElement && $node->nodeName == 'entry') {
-            if ($node->hasChildNodes()) {
-              $csvRecord = array();
-              for ($idx2 = 0; $idx2 < $node->childNodes->length; $idx2++) {
-                $currentChildNode = $node->childNodes->item($idx2);
-                if ($currentChildNode instanceof DOMElement &&
-                    $currentChildNode->hasAttribute('name')) {
-                  $fieldName = $currentChildNode->getAttribute('name');
-                  if (!empty($fieldName)) {
-                    switch ($currentChildNode->nodeName) {
-                    case 'field' :
-                      $csvRecord[$fieldName] = $currentChildNode->nodeValue;
-                      $csvCaptions[$fieldName] = TRUE;
-                      break;
-                    case 'fieldset' :
-                      //a fiedset consists of multiple field elements
-                      $nodeContent = '';
-                      for ($idx3 = 0; $idx3 < $currentChildNode->childNodes->length; $idx3++) {
-                        $setNode = $currentChildNode->childNodes->item($idx3);
-                        if ($setNode->nodeType instanceof DOMElement) {
-                          $nodeContent .= $setNode->nodeValue.' ';
-                        }
-                      }
-                      $csvRecord[$fieldName] = substr($nodeContent, 0, -1);
-                      $csvCaptions[$fieldName] = TRUE;
-                      break;
-                    }
-                  }
-                }
-              }
-              $csvData[] = $csvRecord;
-            }
-          }
-        }
-        unset($xmlTree);
-
-        $result = '';
-        $iCount = count($csvData);
-        if ($iCount > 0) {
-          //put out column title
-          if (count($csvCaptions) > 0) {
-            $captions = array_keys($csvCaptions);
-            if ($field = $captions[0]) {
-              $field = trim($field);
-              $result .= '"'. $field . '"';
-              $iterMax = count($captions);
-              for ($iter = 1; $iter < $iterMax; ++$iter) {
-                $field = trim($captions[$iter]);
-                $result .= ',"' . $field . '"';
-              }
-              $result .= LF;
-            }
-            for ($i = 0; $i < $iCount; ++$i) {
-              $kCount = count($captions);
-              $result .= '"'. trim($csvData[$i][$captions[0]]) . '"';
-              for ($k = 1; $k < $kCount; ++$k) {
-                if (isset($csvData[$i][$captions[$k]])) {
-                  $result .= ',"' . trim($this->escapeForCSV($csvData[$i][$captions[$k]])) . '"';
-                } else {
-                  $result .= ',"'.'"';
-                }
-              }
-              $result .= LF;
-            }
-            return substr($result, 0, strlen(LF) * -1);
-          }
-        }
+      unset($this->feedbackData);
+      $this->loadFeedbackData(0);
+      if (is_array($this->feedbackData)) {
+        $writer = new PapayaCsvWriter();
+        $writer->callbacks()->onMapRow = function($context, $row) {
+          return [
+            PapayaUtilDate::timestampToString($row['feedback_time']),
+            $row['feedback_email'],
+            $row['feedback_name'],
+            $row['feedback_subject'],
+            $row['feedback_message']
+          ];
+        };
+        $writer->writeHeader(['timestamp', 'email', 'name', 'subject', 'message']);
+        $writer->writeList($this->feedbackData);
       }
     }
-    return '';
   }
 
   /**
