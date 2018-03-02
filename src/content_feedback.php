@@ -108,7 +108,7 @@ class content_feedback extends base_content {
   * @access public
   * @return string $result
   */
-  function getParsedTeaser() {
+  function getParsedTeaser($parseParams = NULL) {
     $this->setDefaultData();
     $result = sprintf(
       '<title>%s</title>'.LF,
