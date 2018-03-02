@@ -127,7 +127,7 @@ class content_feedback extends base_content {
   * @access public
   * @return string
   */
-  function getParsedData() {
+  function getParsedData($parseParams = NULL) {
     $this->setDefaultData();
     $this->initializeParams();
     $result = '';

@@ -107,7 +107,7 @@ class content_pagecomment extends base_content {
   * @access public
   * @return string xml
   */
-  function getParsedData() {
+  function getParsedData($parseParams = NULL) {
     $this->setDefaultData();
     $this->initializeParams();
 
