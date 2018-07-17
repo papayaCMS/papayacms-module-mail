@@ -385,6 +385,10 @@ class content_feedback_form extends base_content {
         papaya_strings::escapeHTMLChars($this->paramName),
         papaya_strings::escapeHTMLChars($name)
       );
+      $result .= sprintf(
+        '<option value="">%s</option>',
+        papaya_strings::escapeHTMLChars(new PapayaUiStringTranslated('None'))
+      );
       if (!empty($structure['feedback_form_structure'])) {
         $dom = new PapayaXmlDocument();
         $dom->loadXml($structure['feedback_form_structure']);
@@ -477,23 +481,13 @@ class content_feedback_form extends base_content {
         }
       }
     }
-    if (!empty($this->data['msg_sender_name']) &&
-        !empty($this->params[$this->data['msg_sender_name']])) {
-      $senderName = $this->params[$this->data['msg_sender_name']];
-    } else {
-      $senderName = '';
-    }
     $this->emailObj = new email();
     if (!empty($this->data['return_path'])) {
       $this->emailObj->setReturnPath($this->data['return_path'], TRUE);
     }
-    if (!empty($this->data['msg_sender']) &&
-        !empty($this->params[$this->data['msg_sender']]) &&
-        PapayaFilterFactory::isEmail($this->params[$this->data['msg_sender']])) {
-      $this->emailObj->setSender(
-        $this->params[$this->data['msg_sender']],
-        $senderName
-      );
+    list($senderEmail, $senderName) = $this->getFeedbackSender();
+    if (!empty($senderEmail)) {
+      $this->emailObj->setSender($senderEmail, $senderName);
     }
     $this->emailObj->addAddress($this->data['msg_mailto']);
     $this->emailObj->setSubject($this->data['msg_subject'], $content);
@@ -527,18 +521,7 @@ class content_feedback_form extends base_content {
     $result = '';
     $xmlMessage = $this->getFeedbackEntryXML();
     $inputData = $this->dialogData->getDialogInputs();
-    if (!empty($this->data['msg_sender']) &&
-        !empty($this->params[$this->data['msg_sender']])) {
-      $sender = $this->params[$this->data['msg_sender']];
-    } else {
-      $sender = '';
-    }
-    if (!empty($this->data['msg_sender_name']) &&
-        !empty($this->params[$this->data['msg_sender_name']])) {
-      $senderName = $this->params[$this->data['msg_sender_name']];
-    } else {
-      $senderName = '';
-    }
+    list($sender, $senderName) = $this->getFeedbackSender();
     $content = array();
     foreach ($inputData as $field => $value) {
       if ($field != 'send') {
@@ -625,17 +608,31 @@ class content_feedback_form extends base_content {
    * @access public
    */
   function sendConfirmation($values) {
-    if ($this->confirmationSent == FALSE) {
-      if (!empty($this->data['confirm_subject']) &&
-          !empty($this->params[$this->data['msg_sender']])) {
+    if (!$this->confirmationSent) {
+      list($senderEmail, $senderName) = $this->getFeedbackSender();
+      if (!(empty($senderEmail) || empty($this->data['confirm_subject']))) {
         $emailConfirmObj = new email();
         $emailConfirmObj->setSender($this->data['msg_mailto']);
-        $emailConfirmObj->addAddress($this->params[$this->data['msg_sender']]);
+        $emailConfirmObj->addAddress($senderEmail, $senderName);
         $emailConfirmObj->setSubject($this->data['confirm_subject'], $values);
         $emailConfirmObj->setBody($this->data['confirm_body'], $values);
         $emailConfirmObj->send();
       }
       $this->confirmationSent = TRUE;
+    }
+  }
+
+  private function getFeedbackSender() {
+    $senderEmailField = $this->data['msg_sender'];
+    $senderNameField = $this->data['msg_sender_name'];
+    $result = array('', '');
+    if (!empty($senderEmailField)) {
+      $result[0] = PapayaFilterFactory::isEmail($this->params[$senderEmailField])
+        ? $this->params[$senderEmailField] : '';
+    }
+    if (!empty($senderNameField)) {
+      $result[0] = PapayaFilterFactory::isNotEmpty($this->params[$senderNameField])
+        ? $this->params[$senderNameField] : '';
     }
   }
 }
