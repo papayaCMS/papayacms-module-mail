@@ -1,10 +1,9 @@
 # Composer
-/vendor
+/vendor/
 composer.phar
-composer.lock
 
 # PHPStorm
-/.idea
+/.idea/
 
 # Eclipse
 /.settings
@@ -19,7 +18,8 @@ composer.lock
 
 # papaya CMS
 /papaya.php
-/htdocs
+/papaya.sqlite
+/htdocs/
 /papaya-data
 
 
