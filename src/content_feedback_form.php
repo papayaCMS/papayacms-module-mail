@@ -457,27 +457,27 @@ class content_feedback_form extends base_content {
   /**
    * Send email
    *
-   * @access public
    * @return string $result XML
    */
-  function sendEmail() {
+  private function sendEmail() {
     $nl = "\r\n";
     $result = '';
     $content = array();
     $attachStr = '';
-    $inputData = $this->dialogData->getDialogInputs();
-    foreach ($inputData as $field => $value) {
-      if ($field != 'send') {
-        if (is_array($value)) {
-          $comboboxValues = '';
-          foreach ($value as $entry) {
-            $comboboxValues .= $entry . $nl;
+    if ($inputData = $this->dialogData->getDialogInputs()) {
+      foreach ($inputData as $field => $value) {
+        if ($field !== 'send') {
+          if (is_array($value)) {
+            $comboboxValues = '';
+            foreach ($value as $entry) {
+              $comboboxValues .= $entry.$nl;
+            }
+            $content[$this->dialogData->fields[$field]['name']] = $comboboxValues;
+            $attachStr .= $this->dialogData->fields[$field]['name'].$nl.$comboboxValues.$nl.$nl;
+          } else {
+            $content[$this->dialogData->fields[$field]['name']] = $value;
+            $attachStr .= $this->dialogData->fields[$field]['name'].$nl.$value.$nl.$nl;
           }
-          $content[$this->dialogData->fields[$field]['name']] = $comboboxValues;
-          $attachStr .= $this->dialogData->fields[$field]['name'].$nl.$comboboxValues.$nl.$nl;
-        } else {
-          $content[$this->dialogData->fields[$field]['name']] = $value;
-          $attachStr .= $this->dialogData->fields[$field]['name'].$nl.$value.$nl.$nl;
         }
       }
     }
@@ -520,19 +520,20 @@ class content_feedback_form extends base_content {
     $dbObject = $this->getDatabaseObject();
     $result = '';
     $xmlMessage = $this->getFeedbackEntryXML();
-    $inputData = $this->dialogData->getDialogInputs();
     list($sender, $senderName) = $this->getFeedbackSender();
     $content = array();
-    foreach ($inputData as $field => $value) {
-      if ($field != 'send') {
-        if (is_array($value)) {
-          $theValue = '';
-          foreach ($value as $entry) {
-            $theValue .= $entry .LF;
+    if ($inputData = $this->dialogData->getDialogInputs()) {
+      foreach ($inputData as $field => $value) {
+        if ($field !== 'send') {
+          if (is_array($value)) {
+            $theValue = '';
+            foreach ($value as $entry) {
+              $theValue .= $entry.LF;
+            }
+            $content[$this->dialogData->fields[$field]['name']] = $theValue;
+          } else {
+            $content[$this->dialogData->fields[$field]['name']] = $value;
           }
-          $content[$this->dialogData->fields[$field]['name']] = $theValue;
-        } else {
-          $content[$this->dialogData->fields[$field]['name']] = $value;
         }
       }
     }
