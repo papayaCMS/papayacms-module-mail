@@ -81,19 +81,6 @@ class content_feedback_form extends base_content {
         'Apply linebreaks from input to the HTML output.', 1),
       'teaser' => array('Teaser', 'isSomeText', FALSE, 'simplerichtext', 5, '', ''),
       'msg_hello' => array('Text', 'isSomeText', FALSE, 'richtext', 30, '', ''),
-      'Settings',
-      'msg_mailto' => array('Recipient', 'isEmail', FALSE, 'input', 200,
-        'Feedback recipient and sender of feedback confirmations.', ''),
-      'return_path' => array('Return Path', 'isEmail', TRUE, 'input', 200, '', ''),
-      'msg_store' => array ('Feedback mode', 'isNum', FALSE, 'combo',
-        array(
-          0 => 'Send feedback per mail',
-          1 => 'Store feedback in database',
-          2 => 'Send feedback per mail and store it in database'),
-        'Store feedback or send per mail',
-        0),
-      'msg_attach' => array('Send fields as attachment', 'isNum', FALSE,
-        'yesno', '', '', 0),
       'Page after submission',
       'result_type' => array('Output type', 'isNum', TRUE, 'combo',
         array(0 => 'HTML', 1 => 'PDF', 2 => 'PDF + HTML'),
@@ -113,25 +100,41 @@ class content_feedback_form extends base_content {
       'items-mail',
       array(
         'Form',
-        'send_button_title' => array('Send button title', 'isNoHTML', FALSE,
-          'input', 70, '', 'Send'),
         'form_feedback' => array('Form', 'isNum', FALSE, 'function', 'getFormsCombo'),
+        'msg_store' => array ('Feedback mode', 'isNum', FALSE, 'combo',
+          array(
+            0 => 'Send feedback per mail',
+            1 => 'Store feedback in database',
+            2 => 'Send feedback per mail and store it in database'),
+          'Store feedback or send per mail',
+          0),
+        'msg_attach' => array('Send fields as attachment', 'isNum', FALSE,
+          'yesno', '', '', 0),
         'msg_sender' => array('Sender mail field', 'isSomeText', FALSE,
           'function', 'getFieldsCombo', 'Generated form field for sender\'s email address.'),
         'msg_sender_name' => array('Sender name field', 'isSomeText', FALSE,
           'function', 'getFieldsCombo', 'Generated form field for sender\'s name.'),
+        'send_button_title' => array('Send button title', 'isNoHTML', FALSE,
+          'input', 70, '', 'Send'),
+        'Email',
+        'msg_mailto' => array('Recipient', 'isEmail', FALSE, 'input', 200,
+          'Feedback recipient and sender of feedback confirmations.', ''),
+        'return_path' => array('Return Path', 'isEmail', TRUE, 'input', 200, '', ''),
         'msg_subject' => array('Feedback subject', 'isSomeText', FALSE, 'input', 200,
           'Use {%Fieldname%} to fill in the form values supplied by the sender.',
           '[Comment] {%Fieldname%}'),
         'msg_body' => array('Feedback message', 'isSomeText', FALSE, 'textarea', 6,
           'Use {%Fieldname%} to fill in the form values supplied by the sender.',
           "Name: {%Fieldname%} Email: {%Fieldname%} Comment: {%Fieldname%}"),
+        'Privacy Confirmation',
+        'require_privacy_confirmation' => array('Require', 'isNum', FALSE, 'yesno', NULL, '', 0),
+        'msg_privacy' => array('Privacy declaration', 'isSomeText', FALSE, 'simplerichtext', 5, '', ''),
         'Confirmation email',
         'confirm_subject' => array('subject', 'isNoHTML', FALSE, 'input',
           200, 'Email subject sent to surfer. Leave empty to send no email to surfer.'),
         'confirm_body' => array('Message', 'isNoHTML', FALSE,
           'textarea', 5, 'Email body sent to surfer.',
-          'Thank you for your comment. We will get back to you as soon as possible.')
+          'Thank you for your comment. We will get back to you as soon as possible.'),
       )
     ),
     array(
@@ -141,12 +144,12 @@ class content_feedback_form extends base_content {
         'Messages',
         'msg_error' => array('Input error', 'isSomeText', FALSE, 'textarea', 3, '',
           'Please check your input.'),
+        'msg_error_privacy' => array('Unconfirmed privacy declaration', 'isSomeText', FALSE, 'textarea', 3, '',
+          'You need to confirm the privacy declaration.'),
         'msg_send' => array('Confirmation', 'isSomeText', FALSE, 'simplerichtext', 3, '',
           'Message sent. Thank You.'),
         'msg_notsend' => array('Send error', 'isSomeText', FALSE, 'textarea', 3, '',
-          'Send error. Please try again.'),
-        'msg_privacy' => array('Privacy', 'isSomeText', FALSE, 'textarea', 10,
-        'This is displayed at the bottom of the form.', ''),
+          'Send error. Please try again.')
       )
     )
   );
@@ -200,44 +203,52 @@ class content_feedback_form extends base_content {
       );
     }
     $result .= '<mail>'.LF;
-    if (isset($this->params['send']) &&  $this->params['send']) {
-      if ($this->dialogData->checkDialogInputs()) {
-        // Save data in Session to use later in PDF-Popup
-        $this->setSessionValue('feedback_params', $this->params);
-        switch ($this->data['msg_store']) {
-        case 0: // Send email
-          $result .= $this->sendEmail();
-          break;
-        case 1: // Store feedback in database
-          $result .= $this->storeFeedback();
-          break;
-        case 2: // Store feedback in database and send it as email
-          $result .= $this->sendEmail();
-          $this->storeFeedback();
-        }
-        if (isset($this->data['result_type']) && isset($this->data['pdf_popup'])) {
-          if ($this->data['result_type'] >= 1) { // + PDF from 1
-            $linkPopup = $this->getAbsoluteURL($this->getWebLink(NULL, NULL, 'pdf'));
-            $result .= sprintf(
-              '<pdf-popup>'.LF.
-                '<target>%s</target>'.LF.
-                '<text>%s</text>'.LF.
-                '<link>%s</link>'.LF.
-              '</pdf-popup>'.LF,
-              papaya_strings::escapeHTMLChars($this->data['pdf_popup']),
-              $this->getXHTMLString($this->data['save_popup_text'], TRUE),
-              papaya_strings::escapeHTMLChars($linkPopup)
-            );
+    if ($this->isFormSumitted()) {
+      if ($this->isPrivayConfirmed()) {
+        if ($this->dialogData->checkDialogInputs()) {
+          // Save data in Session to use later in PDF-Popup
+          $this->setSessionValue('feedback_params', $this->params);
+          switch ($this->data['msg_store']) {
+            case 0: // Send email
+              $result .= $this->sendEmail();
+              break;
+            case 1: // Store feedback in database
+              $result .= $this->storeFeedback();
+              break;
+            case 2: // Store feedback in database and send it as email
+              $result .= $this->sendEmail();
+              $this->storeFeedback();
           }
-          if ($this->data['result_type'] == 2) { // PDF + HTML
-            $result .= $this->dialogData->getDialogXML();
+          if (isset($this->data['result_type']) && isset($this->data['pdf_popup'])) {
+            if ($this->data['result_type'] >= 1) { // + PDF from 1
+              $linkPopup = $this->getAbsoluteURL($this->getWebLink(NULL, NULL, 'pdf'));
+              $result .= sprintf(
+                '<pdf-popup>' . LF .
+                '<target>%s</target>' . LF .
+                '<text>%s</text>' . LF .
+                '<link>%s</link>' . LF .
+                '</pdf-popup>' . LF,
+                papaya_strings::escapeHTMLChars($this->data['pdf_popup']),
+                $this->getXHTMLString($this->data['save_popup_text'], TRUE),
+                papaya_strings::escapeHTMLChars($linkPopup)
+              );
+            }
+            if ($this->data['result_type'] == 2) { // PDF + HTML
+              $result .= $this->dialogData->getDialogXML();
+            }
           }
+        } else {
+          $result .= sprintf(
+            '<message type="error">%s<ul><li>%s</li></ul></message>' . LF,
+            $this->getXHTMLString($this->data['msg_error']),
+            implode('</li><li>', $this->dialogData->inputErrors)
+          );
+          $result .= $this->dialogData->getDialogXML();
         }
       } else {
         $result .= sprintf(
-          '<message type="error">%s<ul><li>%s</li></ul></message>'.LF,
-          $this->getXHTMLString($this->data['msg_error']),
-          implode('</li><li>', $this->dialogData->inputErrors)
+          '<message type="error">%s</message>' . LF,
+          $this->getXHTMLString($this->data['msg_error_privacy'])
         );
         $result .= $this->dialogData->getDialogXML();
       }
@@ -250,7 +261,9 @@ class content_feedback_form extends base_content {
       $result .= $this->dialogData->getDialogXML();
     }
     $result .= sprintf(
-      '<privacy>%s</privacy>',
+      '<privacy require-confirmation="%s" name="%s[confirm_privacy]">%s</privacy>',
+      $this->data['require_privacy_confirmation'] ? 'yes' : 'no',
+      papaya_strings::escapeHTMLChars($this->paramName),
       $this->getXHTMLString($this->data['msg_privacy'])
     );
     $result .= '</mail>'.LF;
@@ -635,6 +648,17 @@ class content_feedback_form extends base_content {
       $result[0] = PapayaFilterFactory::isNotEmpty($this->params[$senderNameField])
         ? $this->params[$senderNameField] : '';
     }
+  }
+
+  public function isFormSumitted() {
+    return isset($this->params['send']) &&  $this->params['send'];
+  }
+
+  public function isPrivayConfirmed() {
+    return (
+      (!$this->data['require_privacy_confirmation']) ||
+      (isset($this->params['confirm_privacy']) &&  $this->params['confirm_privacy'])
+    );
   }
 }
 
