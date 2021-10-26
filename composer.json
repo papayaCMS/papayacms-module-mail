@@ -6,7 +6,7 @@
     "document-root" : "htdocs/"
   },
   "require": {
-    "papaya/cms-core": "6.*"
+    "papaya/cms-core": "6.*|7.*"
   },
   "require-dev": {
     "papaya/cms-administration": "6.*",
