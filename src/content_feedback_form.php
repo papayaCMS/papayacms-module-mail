@@ -255,13 +255,6 @@ class content_feedback_form extends base_content {
             $result .= $this->dialogData->getDialogXML();
           }
         }
-      } else {
-        $result .= sprintf(
-          '<message type="error">%s<ul><li>%s</li></ul></message>' . LF,
-          $this->getXHTMLString($this->data['msg_error']),
-          implode('</li><li>', $this->dialogData->inputErrors)
-        );
-        $result .= $this->dialogData->getDialogXML();
       }
     } elseif ($params = $this->getSessionValue('feedback_params')) {
       $this->params = $params;
