@@ -204,51 +204,62 @@ class content_feedback_form extends base_content {
     }
     $result .= '<mail>'.LF;
     if ($this->isFormSumitted()) {
-      if ($this->isPrivayConfirmed()) {
-        if ($this->dialogData->checkDialogInputs()) {
-          // Save data in Session to use later in PDF-Popup
-          $this->setSessionValue('feedback_params', $this->params);
-          switch ($this->data['msg_store']) {
-            case 0: // Send email
-              $result .= $this->sendEmail();
-              break;
-            case 1: // Store feedback in database
-              $result .= $this->storeFeedback();
-              break;
-            case 2: // Store feedback in database and send it as email
-              $result .= $this->sendEmail();
-              $this->storeFeedback();
-          }
-          if (isset($this->data['result_type']) && isset($this->data['pdf_popup'])) {
-            if ($this->data['result_type'] >= 1) { // + PDF from 1
-              $linkPopup = $this->getAbsoluteURL($this->getWebLink(NULL, NULL, 'pdf'));
-              $result .= sprintf(
-                '<pdf-popup>' . LF .
-                '<target>%s</target>' . LF .
-                '<text>%s</text>' . LF .
-                '<link>%s</link>' . LF .
-                '</pdf-popup>' . LF,
-                papaya_strings::escapeHTMLChars($this->data['pdf_popup']),
-                $this->getXHTMLString($this->data['save_popup_text'], TRUE),
-                papaya_strings::escapeHTMLChars($linkPopup)
-              );
-            }
-            if ($this->data['result_type'] == 2) { // PDF + HTML
-              $result .= $this->dialogData->getDialogXML();
-            }
-          }
-        } else {
-          $result .= sprintf(
-            '<message type="error">%s<ul><li>%s</li></ul></message>' . LF,
-            $this->getXHTMLString($this->data['msg_error']),
-            implode('</li><li>', $this->dialogData->inputErrors)
-          );
-          $result .= $this->dialogData->getDialogXML();
-        }
-      } else {
+      $privacyConfirmed = TRUE;
+      $dialogChecked = TRUE;
+      if (!$this->isPrivacyConfirmed()) {
+	$privacyConfirmed = FALSE;
         $result .= sprintf(
           '<message type="error">%s</message>' . LF,
           $this->getXHTMLString($this->data['msg_error_privacy'])
+        );
+        $result .= $this->dialogData->getDialogXML();
+      }
+      if (!$this->dialogData->checkDialogInputs()) {
+        $dialogChecked = FALSE;
+        $result .= sprintf(
+          '<message type="error">%s<ul><li>%s</li></ul></message>' . LF,
+          $this->getXHTMLString($this->data['msg_error']),
+          implode('</li><li>', $this->dialogData->inputErrors)
+        );
+        $result .= $this->dialogData->getDialogXML();
+      }
+      if ($privacyConfirmed && $dialogChecked) {
+        // Save data in Session to use later in PDF-Popup
+        $this->setSessionValue('feedback_params', $this->params);
+        switch ($this->data['msg_store']) {
+          case 0: // Send email
+            $result .= $this->sendEmail();
+            break;
+          case 1: // Store feedback in database
+            $result .= $this->storeFeedback();
+            break;
+          case 2: // Store feedback in database and send it as email
+            $result .= $this->sendEmail();
+            $this->storeFeedback();
+        }
+        if (isset($this->data['result_type']) && isset($this->data['pdf_popup'])) {
+          if ($this->data['result_type'] >= 1) { // + PDF from 1
+            $linkPopup = $this->getAbsoluteURL($this->getWebLink(NULL, NULL, 'pdf'));
+            $result .= sprintf(
+              '<pdf-popup>' . LF .
+              '<target>%s</target>' . LF .
+              '<text>%s</text>' . LF .
+              '<link>%s</link>' . LF .
+              '</pdf-popup>' . LF,
+              papaya_strings::escapeHTMLChars($this->data['pdf_popup']),
+              $this->getXHTMLString($this->data['save_popup_text'], TRUE),
+              papaya_strings::escapeHTMLChars($linkPopup)
+            );
+          }
+          if ($this->data['result_type'] == 2) { // PDF + HTML
+            $result .= $this->dialogData->getDialogXML();
+          }
+        }
+      } else {
+        $result .= sprintf(
+          '<message type="error">%s<ul><li>%s</li></ul></message>' . LF,
+          $this->getXHTMLString($this->data['msg_error']),
+          implode('</li><li>', $this->dialogData->inputErrors)
         );
         $result .= $this->dialogData->getDialogXML();
       }
@@ -654,7 +665,7 @@ class content_feedback_form extends base_content {
     return isset($this->params['send']) &&  $this->params['send'];
   }
 
-  public function isPrivayConfirmed() {
+  public function isPrivacyConfirmed() {
     return (
       (!$this->data['require_privacy_confirmation']) ||
       (isset($this->params['confirm_privacy']) &&  $this->params['confirm_privacy'])
