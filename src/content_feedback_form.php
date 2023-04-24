@@ -212,7 +212,6 @@ class content_feedback_form extends base_content {
           '<message type="error">%s</message>' . LF,
           $this->getXHTMLString($this->data['msg_error_privacy'])
         );
-        $result .= $this->dialogData->getDialogXML();
       }
       if (!$this->dialogData->checkDialogInputs()) {
         $dialogChecked = FALSE;
@@ -221,7 +220,6 @@ class content_feedback_form extends base_content {
           $this->getXHTMLString($this->data['msg_error']),
           implode('</li><li>', $this->dialogData->inputErrors)
         );
-        $result .= $this->dialogData->getDialogXML();
       }
       if ($privacyConfirmed && $dialogChecked) {
         // Save data in Session to use later in PDF-Popup
@@ -255,6 +253,8 @@ class content_feedback_form extends base_content {
             $result .= $this->dialogData->getDialogXML();
           }
         }
+      } else {
+	$result .= $this->dialogData->getDialogXML();
       }
     } elseif ($params = $this->getSessionValue('feedback_params')) {
       $this->params = $params;
