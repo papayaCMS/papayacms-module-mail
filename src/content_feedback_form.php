@@ -209,14 +209,14 @@ class content_feedback_form extends base_content {
       if (!$this->isPrivacyConfirmed()) {
 	$privacyConfirmed = FALSE;
         $result .= sprintf(
-          '<message type="error">%s</message>' . LF,
+          '<message type="error" identifier="error-privacy">%s</message>' . LF,
           $this->getXHTMLString($this->data['msg_error_privacy'])
         );
       }
       if (!$this->dialogData->checkDialogInputs()) {
         $dialogChecked = FALSE;
         $result .= sprintf(
-          '<message type="error">%s<ul><li>%s</li></ul></message>' . LF,
+          '<message type="error" identifier="error-field">%s<ul><li>%s</li></ul></message>' . LF,
           $this->getXHTMLString($this->data['msg_error']),
           implode('</li><li>', $this->dialogData->inputErrors)
         );
