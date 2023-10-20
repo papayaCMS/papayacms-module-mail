@@ -154,6 +154,10 @@ class content_feedback_form extends base_content {
         'Privacy Confirmation',
         'require_privacy_confirmation' => ['Require', 'isNum', FALSE, 'yesno', NULL, '', 0],
         'msg_privacy' => ['Privacy declaration', 'isSomeText', FALSE, 'simplerichtext', 5, '', ''],
+        'Honeypot',
+        'use_honeypot' => ['Use', 'isNum', FALSE, 'yesno', NULL, '', 0],
+        'honeypot_label' => ['Label', 'isSomeText', TRUE, 'input', '', 100, 'To'],
+        'honeypot_name' => ['Name', 'isAlphaNum', TRUE, 'input', '', 20, 'to'],
         'Confirmation email',
         'confirm_subject' => [
           'subject', 'isNoHTML', FALSE, 'input',
@@ -249,48 +253,55 @@ class content_feedback_form extends base_content {
           $this->getXHTMLString($this->data['msg_error_privacy'])
         );
       }
-      if (!$this->dialogData->checkDialogInputs()) {
-        $dialogChecked = FALSE;
+      if ($this->isHoneypotActivated()) {
         $result .= sprintf(
-          '<message type="error" identifier="error-field">%s<ul><li>%s</li></ul></message>'.LF,
-          $this->getXHTMLString($this->data['msg_error']),
-          implode('</li><li>', $this->dialogData->inputErrors)
+          '<message type="normal">%s</message>'.LF,
+          $this->getXHTMLString($this->data['msg_send'])
         );
-      }
-      if ($privacyConfirmed && $dialogChecked) {
-        // Save data in Session to use later in PDF-Popup
-        $this->setSessionValue('feedback_params', $this->params);
-        switch ($this->data['msg_store']) {
-        case 0: // Send email
-          $result .= $this->sendEmail();
-          break;
-        case 1: // Store feedback in database
-          $result .= $this->storeFeedback();
-          break;
-        case 2: // Store feedback in database and send it as email
-          $result .= $this->sendEmail();
-          $this->storeFeedback();
-        }
-        if (isset($this->data['result_type']) && isset($this->data['pdf_popup'])) {
-          if ($this->data['result_type'] >= 1) { // + PDF from 1
-            $linkPopup = $this->getAbsoluteURL($this->getWebLink(NULL, NULL, 'pdf'));
-            $result .= sprintf(
-              '<pdf-popup>'.LF.
-              '<target>%s</target>'.LF.
-              '<text>%s</text>'.LF.
-              '<link>%s</link>'.LF.
-              '</pdf-popup>'.LF,
-              papaya_strings::escapeHTMLChars($this->data['pdf_popup']),
-              $this->getXHTMLString($this->data['save_popup_text'], TRUE),
-              papaya_strings::escapeHTMLChars($linkPopup)
-            );
-          }
-          if ($this->data['result_type'] == 2) { // PDF + HTML
-            $result .= $this->dialogData->getDialogXML();
-          }
-        }
       } else {
-        $result .= $this->dialogData->getDialogXML();
+        if (!$this->dialogData->checkDialogInputs()) {
+          $dialogChecked = FALSE;
+          $result .= sprintf(
+            '<message type="error" identifier="error-field">%s<ul><li>%s</li></ul></message>'.LF,
+            $this->getXHTMLString($this->data['msg_error']),
+            implode('</li><li>', $this->dialogData->inputErrors)
+          );
+        }
+        if ($privacyConfirmed && $dialogChecked) {
+          // Save data in Session to use later in PDF-Popup
+          $this->setSessionValue('feedback_params', $this->params);
+          switch ($this->data['msg_store']) {
+          case 0: // Send email
+            $result .= $this->sendEmail();
+            break;
+          case 1: // Store feedback in database
+            $result .= $this->storeFeedback();
+            break;
+          case 2: // Store feedback in database and send it as email
+            $result .= $this->sendEmail();
+            $this->storeFeedback();
+          }
+          if (isset($this->data['result_type']) && isset($this->data['pdf_popup'])) {
+            if ($this->data['result_type'] >= 1) { // + PDF from 1
+              $linkPopup = $this->getAbsoluteURL($this->getWebLink(NULL, NULL, 'pdf'));
+              $result .= sprintf(
+                '<pdf-popup>'.LF.
+                '<target>%s</target>'.LF.
+                '<text>%s</text>'.LF.
+                '<link>%s</link>'.LF.
+                '</pdf-popup>'.LF,
+                papaya_strings::escapeHTMLChars($this->data['pdf_popup']),
+                $this->getXHTMLString($this->data['save_popup_text'], TRUE),
+                papaya_strings::escapeHTMLChars($linkPopup)
+              );
+            }
+            if ($this->data['result_type'] == 2) { // PDF + HTML
+              $result .= $this->dialogData->getDialogXML();
+            }
+          }
+        } else {
+          $result .= $this->dialogData->getDialogXML();
+        }
       }
     } elseif ($params = $this->getSessionValue('feedback_params')) {
       $this->params = $params;
@@ -299,6 +310,14 @@ class content_feedback_form extends base_content {
     } else {
       // Nothing received, return form
       $result .= $this->dialogData->getDialogXML();
+    }
+    if ($this->data['use_honeypot']) {
+      $result .= sprintf(
+        '<honeypot label="%s" name="%s[%s]"/>',
+        papaya_strings::escapeHTMLChars($this->data['honeypot_label']),
+        papaya_strings::escapeHTMLChars($this->paramName),
+        papaya_strings::escapeHTMLChars($this->data['honeypot_name'])
+      );
     }
     $result .= sprintf(
       '<privacy require-confirmation="%s" name="%s[confirm_privacy]">%s</privacy>',
@@ -699,5 +718,16 @@ class content_feedback_form extends base_content {
       (!$this->data['require_privacy_confirmation']) ||
       (isset($this->params['confirm_privacy']) && $this->params['confirm_privacy'])
     );
+  }
+
+  public function isHoneypotActivated() {
+    $name = $this->data['honeypot_name'];
+    if ($this->data['use_honeypot'] && $name) {
+      return (
+        !isset($this->params[$name]) ||
+        $this->params[$name] !== ''
+      );
+    }
+    return FALSE;
   }
 }
